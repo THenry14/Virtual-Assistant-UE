@@ -96,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
                 "Wojciech Szymczyk,\n Michał Czerwień\n" );
     }
 
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {                               // what happens after clicking the menu's option (settings)
         // Handle action bar item clicks here. The action bar will
@@ -125,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
 
             case R.id.action_settings:
 
-                // DO SOMETHING HERE
+                Methods.meth();
 
                 return true;
 
