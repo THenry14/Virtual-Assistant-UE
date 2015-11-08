@@ -1,13 +1,15 @@
 package nowim.speechtotext;
-
-
 /*
 Wojciech Szymczyk, Michał Czerwień
-Virtual Personal Assistant, ver 0.1
+Virtual Personal Assistant, ver 0.2
 Api level: 17
 
 
  */
+import android.content.ContentResolver;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.ContactsContract;
 import android.support.v7.app.AppCompatActivity;
 import java.util.ArrayList;
 //import android.app.Activity;                          //probably will use it for working in widget-like fashion as messenger and in background
@@ -22,20 +24,29 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.view.MenuItem;
 
+
+
 public class MainActivity extends AppCompatActivity {
 
     protected static final int RESULT_SPEECH = 1;
 
     private ImageButton ButtonToRecord;                 // initialize button
     private TextView RecognisedText;                    // initialize text area
+    About about = new About();
+    // Methods read = new Methods();
+    public TextView textDetail;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);      // view declared in xml, You can change the layout there
 
-        RecognisedText = (TextView) findViewById(R.id.RecognisedText);
+        RecognisedText = (TextView) findViewById(R.id.Text);
         ButtonToRecord = (ImageButton) findViewById(R.id.ButtonToRecord);
+        about.AboutText = (TextView) findViewById(R.id.Text);
+        //read.
+        textDetail = (TextView) findViewById(R.id.Text);
+
 
         ButtonToRecord.setOnClickListener(new View.OnClickListener() {      // creation of layout, found by ID
 
@@ -44,7 +55,6 @@ public class MainActivity extends AppCompatActivity {
 
                 Intent intent = new Intent(
                         RecognizerIntent.ACTION_RECOGNIZE_SPEECH);          // after pressing button, perform the action of recognition
-
                 //intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, "en-US");
 
                 try {                                                       // if speech recognition not supported, exception is being thrown
@@ -77,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
 
                     ArrayList<String> text = data
                             .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-
+                    RecognisedText.setText("");
                     RecognisedText.setText(text.get(0));
                 }
                 break;
@@ -86,15 +96,45 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void AboutText(){
+    public void readContacts () {
+        textDetail.setText("");
+        StringBuffer sb = new StringBuffer();
+        sb.append("......Contact Details.....");
+        ContentResolver cr = getContentResolver();
+        Cursor cur = cr.query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
+        String phone = null;
 
-        TextView AboutTXT;
 
-        AboutTXT = (TextView) findViewById(R.id.AboutTXT);
+        if (cur.getCount() > 0) {
+            while (cur.moveToNext()) {
+                String id = cur.getString(cur.getColumnIndex(ContactsContract.Contacts._ID));
+                String name = cur.getString(cur.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
 
-        AboutTXT.setText("Virtual Personal Assistant,\n ver 0.1\n\n " +
-                "Wojciech Szymczyk,\n Michał Czerwień\n" );
+                if (Integer.parseInt(cur.getString(cur.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER))) > 0) {
+                    sb.append("\n Contact Name:" + name);
+                    Cursor pCur = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?", new String[]{id}, null);
+                    while (pCur.moveToNext()) {
+                        phone = pCur.getString(pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                        sb.append("\n Phone number:" + phone);
+                    }
+                    pCur.close();
+                }
+                sb.append("\n........................................");
+            }
+            textDetail.setText(sb);
+
+        }
+        //coś tu sie odpierdoliło.
+        // public void makeCall () {
+
+        //    if (RecognisedText.getText().toString().contains(name)) {
+        //        Intent callIntent = new Intent(Intent.ACTION_CALL);
+        //        callIntent.setData(Uri.parse(phone));
+        //        startActivity(callIntent);
     }
+    //}
+//}
+
 
 
     @Override
@@ -103,36 +143,21 @@ public class MainActivity extends AppCompatActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
 
-        //all commented for now, cuz I try to do it different way
-
-       /* int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        else if (id == R.id.action_about) {
-            return true;
-        }
-
-        else if (id == R.id.action_exit) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item); */
-
         switch (item.getItemId()) {
 
             case R.id.action_settings:
 
-                Methods.meth();
+                //FOR TEST PURPOSES FOR NOW !!!!!! LATER ON WILL IMPLEMENT SETTINGS MENU
+
+                //read.
+                readContacts();
 
                 return true;
 
             case R.id.action_about:
 
-                AboutText();
+
+                about.AboutText();
 
                 return true;
 
