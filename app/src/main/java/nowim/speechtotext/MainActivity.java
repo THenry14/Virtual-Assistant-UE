@@ -1,7 +1,7 @@
 package nowim.speechtotext;
 /*
 Wojciech Szymczyk, Michał Czerwień
-Virtual Personal Assistant, ver 0.3
+Virtual Personal Assistant, ver 0.5
 Api level: 17
 
  */
@@ -13,7 +13,6 @@ import android.support.v7.app.AppCompatActivity;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-//import android.app.Activity;                          //probably will use it for working in widget-like fashion as messenger and in background
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.os.Bundle;
@@ -22,23 +21,36 @@ import android.text.TextUtils;
 import android.view.Menu;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.view.MenuItem;
+import android.content.ComponentName;
+
 
 
 public class MainActivity extends AppCompatActivity {
 
     protected static final int RESULT_SPEECH = 1;
 
-    private ImageButton ButtonToRecord;                 // initialize button
-    private TextView RecognisedText;                    // initialize text area
+    private ImageButton ButtonToRecord;
+    private Button ButtonToMinimalize;
+    private TextView RecognisedText;
+    Methods method = new Methods();
     About about = new About();
     String phone = new String();
     String name = new String();
     String id = new String();
     String number = new String();
     String nameOfContact = new String();
+    boolean minimalized = false;
+    boolean isCalling;
+    String choiceMSG = "wiadomość";
+    String choiceBrowser = "Szukaj"; /* Szukaj always starts with big S, O_o */
+    String choiceAlarm  = "budzik";
+    String choiceMap = "Znajdź na mapie";
+    String choiceCall = "Zadzwoń";
+    String test = "test";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,15 +60,15 @@ public class MainActivity extends AppCompatActivity {
         RecognisedText = (TextView) findViewById(R.id.Text);
         about.AboutText = (TextView) findViewById(R.id.Text);
         ButtonToRecord = (ImageButton) findViewById(R.id.ButtonToRecord);
+        ButtonToMinimalize = (Button) findViewById(R.id.Minimalize);
 
         ButtonToRecord.setOnClickListener(new View.OnClickListener() {      // creation of layout, found by ID
 
             @Override
             public void onClick(View v) {
 
-                Intent intent = new Intent(
-                        RecognizerIntent.ACTION_RECOGNIZE_SPEECH);          // after pressing button, perform the action of recognition
-
+                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);          // after pressing button, perform the action of recognition
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pl-PL");
                 try {                                                       // if speech recognition not supported, exception is being thrown
                     startActivityForResult(intent, RESULT_SPEECH);
                     RecognisedText.setText("");
@@ -66,6 +78,22 @@ public class MainActivity extends AppCompatActivity {
                             "Device doesn't support speech recognition",
                             Toast.LENGTH_SHORT);
                     t.show();
+                }
+            }
+        });
+
+        ButtonToMinimalize.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                if (minimalized) {
+                    stopService(new Intent(getApplication(), MinimalizedApplication.class));
+                    minimalized = false;
+                } else {
+                    startService(new Intent(getApplication(), MinimalizedApplication.class));
+                    minimalized = true;
+                    startActivity(method.hideApp());
+
                 }
             }
         });
@@ -80,37 +108,89 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {     // result of the activity
         super.onActivityResult(requestCode, resultCode, data);
-
         switch (requestCode) {                                                          // in our case speech recognition is chosen all the time since RESULT_SPEECH=1
             case RESULT_SPEECH: {
                 if (resultCode == RESULT_OK && null != data) {                          // the speech was recognised and is not silence
+                    ArrayList<String> text = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                    RecognisedText.setText("");
+                    RecognisedText.setText(text.get(0));
 
-                    ArrayList<String> text = data
-                            .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                    if (RecognisedText.getText().toString().startsWith(test)) {
 
-                    recognise(text);
-                    readContacts(nameOfContact);
-                    makeCall(number);
+                        Intent intent = new Intent("android.intent.action.MAIN");
+                        intent.setComponent(new ComponentName("com.android.mms", "com.android.mms.ui.ConversationList"));
+                        startActivity(intent);
+                        /*
+                        Intent test = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                        startActivityForResult(test, RESULT_SPEECH2);
+                        */
+                    }
 
+                    if (RecognisedText.getText().toString().startsWith(choiceCall)){
+                        isCalling = true;
+                        readContacts(text);
+                        makeCall(number);
+
+                    }
+
+                    if (RecognisedText.getText().toString().startsWith(choiceMSG))
+                    {
+                        isCalling = false;
+                        readContacts(text);
+                        String msg = text.get(0);
+                        msg = method.checkPolish(msg);
+                        startActivity(method.sendSMS(msg, number));
+                    }
+                    if (RecognisedText.getText().toString().startsWith(choiceBrowser))
+                    {
+                        String page = text.get(0);
+                        startActivity(method.browse(page));
+                    }
+                    if (RecognisedText.getText().toString().contains(choiceAlarm))
+                    {
+                        int hour = 7;
+                        int minute = 15;
+                        startActivity(method.alarm(hour, minute));
+                    }
+                    if (RecognisedText.getText().toString().startsWith(choiceMap))
+                    {
+                        String addr = text.get(0);
+                        startActivity(method.maps(addr));
+                    }
+                /*        switch (decider) {  //skurwysyn nie działa po polsku. znaczy, czasem bangla, ale zazwyczaj się crashuje <-- by włączyc polski odkomentuj intent.putextra -->
+                            case "zadzwoń":
+                                readContacts(nameOfContact);
+                                makeCall(number);
+                             break;
+
+                         case "napisz":
+                             RecognisedText.setText("LOG : " + "\n" + "MADAFAKA");
+                             //write sms
+                             break;
+
+                         default:
+                             RecognisedText.setText("LOG : " + "\n" + "default");
+                             break;
+                        } */
                 }
-                break;
             }
+                break;
         }
+
     }
 
-    public String recognise( ArrayList text){
-
-        String obj = (String) text.get(0);
-        text.clear();
-        text.add(obj);
-        nameOfContact = TextUtils.join(" ", text);
-        // RecognisedText.setText(nameOfContact + " View from recognised field" + "\n");  //FOR LOGGING
-
-        return nameOfContact;
-    }
-
-    public String readContacts(String nameOfContact) {
+    public String readContacts(ArrayList text) {
         Map<String, String> book = new HashMap<String, String>();
+        nameOfContact = (String) text.get(0);
+        text.clear();
+        text.add(nameOfContact);
+        nameOfContact = TextUtils.join(" ", text);
+        if(isCalling) {
+            nameOfContact = nameOfContact.substring(11);
+        }
+        else{
+            nameOfContact = nameOfContact.substring(9);
+        }
         ContentResolver cr = getContentResolver();
         Cursor cur = cr.query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
             if (cur.getCount() > 0) {
@@ -129,6 +209,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             number = book.get(nameOfContact);
+
             //RecognisedText.setText(number + " view from readContacts field" + "\n"); //FOR LOGGING
 
         return number;
@@ -160,7 +241,7 @@ public class MainActivity extends AppCompatActivity {
 
             case R.id.action_scenarios:
 
-                //possible scenarios here
+                about.AboutScenarios();
 
                 return true;
 
@@ -178,10 +259,7 @@ public class MainActivity extends AppCompatActivity {
 
             case R.id.action_exit:
 
-                Intent intent = new Intent(Intent.ACTION_MAIN);
-                intent.addCategory(Intent.CATEGORY_HOME);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
+                startActivity(method.hideApp());
 
                 return true;
 
